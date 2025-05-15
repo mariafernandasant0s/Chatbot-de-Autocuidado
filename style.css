@@ -125,3 +125,129 @@ body {
     background-color: #ccc;
     border-radius: 4px;
 }
+
+/* ... (seu CSS existente acima) ... */
+
+/* Container principal - ajustes para empurrar input-area para baixo */
+#chat-container {
+    width: 100%;
+    max-width: 500px; /* Você pode aumentar isso se quiser um chat mais largo */
+    height: 90vh;
+    max-height: 700px; /* Limita a altura máxima, bom para telas grandes */
+    background-color: #ffffff;
+    border-radius: 25px; /* Bordas um pouco mais arredondadas */
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15); /* Sombra mais pronunciada */
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 25px; /* Aumentar padding geral */
+}
+
+/* Log das mensagens */
+#chat-output { /* Alterado de #chat-log para #chat-output para corresponder ao HTML */
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px; /* Mais padding interno */
+    background-color: #f8f9fa; /* Um cinza bem claro para contraste */
+    border-radius: 15px;
+    margin-bottom: 20px; /* Espaço antes da área de input */
+    scroll-behavior: smooth;
+    display: flex;
+    flex-direction: column;
+}
+
+
+/* --- ESTILOS PARA A ÁREA DE INPUT --- */
+
+#input-area {
+    display: flex;
+    align-items: center; /* Alinha itens verticalmente no centro */
+    gap: 12px; /* Espaço entre o input e o botão */
+    padding: 12px; /* Padding interno da área de input */
+    background-color: #f1f3f5; /* Fundo sutil para a área de input */
+    border-radius: 30px; /* Bordas bem arredondadas para um look moderno */
+    margin-top: auto; /* Isso vai empurrar a input-area para o final do #chat-container se ele for flex column */
+    /* Se não funcionar com margin-top: auto, remova e confie no flex:1 do chat-output */
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.06); /* Sombra interna sutil */
+}
+
+/* Campo de texto */
+#message-input { /* Certifique-se que o ID no HTML é message-input */
+    flex-grow: 1; /* Faz o input ocupar o espaço disponível */
+    padding: 15px 20px; /* Padding maior para mais altura e conforto */
+    font-size: 16px; /* Fonte maior */
+    border: none; /* Remove a borda padrão */
+    border-radius: 25px; /* Bordas arredondadas consistentes */
+    outline: none; /* Remove o outline azul ao focar (vamos estilizar o foco de outra forma) */
+    background-color: #ffffff; /* Fundo branco para o input */
+    color: #333;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* Sombra sutil externa */
+    transition: box-shadow 0.3s ease;
+}
+
+#message-input:focus {
+    box-shadow: 0 2px 8px rgba(123, 44, 191, 0.3); /* Sombra mais forte no foco com a cor do tema */
+}
+
+/* Botão */
+#send-btn {
+    padding: 15px 25px; /* Padding maior */
+    background: linear-gradient(135deg, #9d4edd, #7b2cbf); /* Gradiente bonito */
+    color: white;
+    border: none;
+    border-radius: 25px; /* Bordas arredondadas */
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 16px; /* Fonte maior */
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(123, 44, 191, 0.3); /* Sombra para dar profundidade */
+    display: flex; /* Para alinhar texto e futuro ícone */
+    align-items: center;
+    justify-content: center;
+}
+
+#send-btn:hover {
+    background: linear-gradient(135deg, #7b2cbf, #9d4edd); /* Inverte gradiente no hover */
+    box-shadow: 0 6px 15px rgba(123, 44, 191, 0.4);
+    transform: translateY(-1px); /* Pequeno efeito de levantar */
+}
+
+#send-btn:active {
+    transform: translateY(1px); /* Efeito de pressionar */
+    box-shadow: 0 2px 5px rgba(123, 44, 191, 0.3);
+}
+
+/* Adicionando estilo para mensagens de erro/sistema (se você tiver no client.js) */
+.message.error-message { /* Assumindo que você adiciona a classe 'error-message' */
+    background-color: #ffebee; /* Fundo avermelhado claro */
+    color: #c62828; /* Texto vermelho escuro */
+    border: 1px solid #ef9a9a;
+    align-self: center;
+    text-align: center;
+    max-width: 90%;
+    font-size: 13px;
+}
+
+
+/* ... (seu CSS existente abaixo, como .message, .user-message, .bot-message) ... */
+
+/* Certifique-se que os seletores para .user-message e .bot-message estão corretos */
+.message.user-message { /* Adiciona .message para especificidade se necessário */
+    background-color: #e0bbff;
+    align-self: flex-end;
+    text-align: right;
+    color: #4a0072;
+    border-bottom-right-radius: 8px; /* Ajuste fino */
+    border-top-left-radius: 16px;
+    border-bottom-left-radius: 16px;
+}
+
+.message.bot-message { /* Adiciona .message para especificidade se necessário */
+    background-color: #c8e6c9;
+    align-self: flex-start;
+    text-align: left;
+    color: #1b5e20;
+    border-bottom-left-radius: 8px; /* Ajuste fino */
+    border-top-right-radius: 16px;
+    border-bottom-right-radius: 16px;
+}
