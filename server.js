@@ -1,3 +1,22 @@
+// server.js
+import dotenv from 'dotenv'; // Adicione esta linha
+dotenv.config(); // Adicione esta linha para carregar .env localmente (opcional)
+
+// ... outras importações ...
+
+// Pega a chave do ambiente ou usa um valor padrão (NÃO USE VALOR PADRÃO EM PRODUÇÃO)
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+if (!GEMINI_API_KEY) {
+    console.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    console.error("ERRO CRÍTICO: GEMINI_API_KEY não está definida nas variáveis de ambiente!");
+    console.error("O servidor NÃO será iniciado sem esta chave.");
+    console.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    // Em produção, você pode querer que o servidor não inicie ou retorne erros específicos.
+    // Para Vercel, se a variável não estiver definida, a função pode não ser construída corretamente.
+    // process.exit(1); // Isso pode não funcionar bem no Vercel; é melhor o build falhar.
+}
+// ... resto do seu código, genAI é inicializado com GEMINI_API_KEY ...
 import express from "express";
 import bodyParser from "body-parser"; // Express 5+ tem seu próprio parser, mas body-parser ainda é comum
 import cors from "cors";
