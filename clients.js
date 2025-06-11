@@ -1,20 +1,16 @@
-// client.js
+// clients.js (VERSÃO FINAL E CORRETA)
 const chatOutput = document.getElementById('chat-output');
 const messageInput = document.getElementById('message-input');
 const sendButton = document.getElementById('send-btn');
 const loadingIndicator = document.getElementById('loading-indicator');
 
-// Histórico da conversa para enviar ao backend
-let chatHistory = []; // Começa vazio
+let chatHistory = [];
 
-// // Comentado ou removido: Não adiciona a mensagem inicial do bot ao histórico programático
-// const initialBotMessageElement = chatOutput.querySelector('.bot-message');
-// if (initialBotMessageElement) {
-//     chatHistory.push({ role: "model", parts: [{ text: initialBotMessageElement.textContent }] });
-// }
+const initialBotMessage = chatOutput.querySelector('.bot-message');
+if (initialBotMessage) {
+    chatHistory.push({ role: "model", parts: [{ text: initialBotMessage.textContent.trim() }] });
+}
 
-
-// --- Adiciona mensagens na interface ---
 function addMessageToChat(sender, text, cssClass = '') {
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message', `${sender}-message`);
@@ -26,15 +22,11 @@ function addMessageToChat(sender, text, cssClass = '') {
     chatOutput.scrollTop = chatOutput.scrollHeight;
 }
 
-// --- Envia mensagem ao backend e trata resposta ---
 async function handleSendMessage() {
     const userMessage = messageInput.value.trim();
     if (!userMessage) return;
 
     addMessageToChat('user', userMessage);
-    // O histórico enviado (historyToSend) NÃO deve incluir a mensagem atual do usuário,
-    // ela é enviada separadamente no campo 'mensagem'.
-    // O chatHistory aqui contém os turnos anteriores.
     const historyToSend = [...chatHistory];
 
     messageInput.value = '';
@@ -43,25 +35,25 @@ async function handleSendMessage() {
     messageInput.disabled = true;
 
     try {
-        console.log("Enviando para /chat:", { mensagem: userMessage, historico: historyToSend }); // Log para depuração
+        // --- CORREÇÃO CRÍTICA AQUI ---
+        // Usamos uma URL relativa '/chat'. Isso força o frontend a falar
+        // com o backend que está no mesmo servidor (o seu do Render).
         const response = await fetch('/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                mensagem: userMessage,    // Mensagem atual do usuário
-                historico: historyToSend  // Histórico de conversas anteriores
+                mensagem: userMessage,
+                historico: historyToSend
             })
         });
 
-        const data = await response.json();
-        console.log("Recebido de /chat:", data); // Log para depuração
-
         if (!response.ok) {
-            throw new Error(data.erro || `Erro HTTP: ${response.status}`);
+            // Se a resposta não for JSON, lê como texto para depurar.
+            const errorText = await response.text();
+            throw new Error(`O servidor respondeu com um erro: ${response.status}. Resposta: ${errorText}`);
         }
 
-        // Atualiza o histórico local com o histórico completo retornado pelo servidor.
-        // O histórico retornado pelo servidor já inclui a mensagem do usuário e a resposta do bot.
+        const data = await response.json();
         chatHistory = data.historico;
         addMessageToChat('bot', data.resposta);
 
@@ -73,16 +65,13 @@ async function handleSendMessage() {
         sendButton.disabled = false;
         messageInput.disabled = false;
         messageInput.focus();
-        chatOutput.scrollTop = chatOutput.scrollHeight;
     }
 }
 
-// --- Atalhos de envio ---
 sendButton.addEventListener('click', handleSendMessage);
 messageInput.addEventListener('keypress', (event) => {
     if (event.key === 'Enter') {
+        event.preventDefault();
         handleSendMessage();
     }
 });
-
-console.log("Client de autocuidado carregado com sucesso. Histórico inicial:", chatHistory);
