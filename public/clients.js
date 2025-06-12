@@ -1,5 +1,21 @@
 const backendURL = "https://chatbot-de-autocuidado.onrender.com/chat";
 
+const chatOutput = document.getElementById('chat-output');
+const messageInput = document.getElementById('message-input');
+const sendButton = document.getElementById('send-btn');
+const loadingIndicator = document.getElementById('loading-indicator');
+
+function addMessageToChat(sender, text, cssClass = '') {
+  const messageDiv = document.createElement('div');
+  messageDiv.classList.add('message', `${sender}-message`);
+  if (cssClass) {
+    messageDiv.classList.add(cssClass);
+  }
+  messageDiv.textContent = text;
+  chatOutput.appendChild(messageDiv);
+  chatOutput.scrollTop = chatOutput.scrollHeight;
+}
+
 async function handleSendMessage() {
   const userMessage = messageInput.value.trim();
   if (!userMessage) return;
@@ -35,3 +51,14 @@ async function handleSendMessage() {
     messageInput.focus();
   }
 }
+
+// Evento do botão enviar
+sendButton.addEventListener('click', handleSendMessage);
+
+// Enviar mensagem com tecla Enter
+messageInput.addEventListener('keypress', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    handleSendMessage();
+  }
+});
