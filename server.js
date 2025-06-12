@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import fetch from "node-fetch";
+import fetch from "node-fetch"; // Para Node <18; se for 18+, pode remover
 
 dotenv.config();
 
@@ -10,10 +10,9 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static("public"));
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta2/models/chat-bison-001:generateMessage";
+const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta2/models/chat-bison-001:generateContent";
 
 if (!GEMINI_API_KEY) {
   console.error("❌ GEMINI_API_KEY não está definida no .env");
@@ -21,29 +20,24 @@ if (!GEMINI_API_KEY) {
 }
 
 app.post("/chat", async (req, res) => {
-  const { mensagem, historico = [] } = req.body;
+  const { mensagem } = req.body;
 
   if (!mensagem) {
     return res.status(400).json({ erro: "Mensagem não enviada" });
   }
 
   try {
-    const mensagens = historico.map(msg => ({
-      author: msg.role === "user" ? "user" : "model",
-      content: msg.parts[0].text
-    }));
-
-    mensagens.push({
-      author: "user",
-      content: mensagem
-    });
-
     const body = {
-      prompt: {
-        messages: mensagens
-      },
-      temperature: 0.7,
-      candidateCount: 1
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: mensagem }]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 512
+      }
     };
 
     const response = await fetch(`${GEMINI_ENDPOINT}?key=${GEMINI_API_KEY}`, {
@@ -61,21 +55,9 @@ app.post("/chat", async (req, res) => {
     }
 
     const data = await response.json();
-    const resposta = data?.candidates?.[0]?.content || "Sem resposta";
+    const resposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Sem resposta.";
 
-    const historicoAtualizado = [...mensagens, {
-      author: "model",
-      content: resposta
-    }];
-
-    res.json({
-      resposta,
-      historico: historicoAtualizado.map(msg => ({
-        role: msg.author,
-        parts: [{ text: msg.content }]
-      }))
-    });
-
+    res.json({ resposta, historico: [] }); // historico vazio por enquanto
   } catch (error) {
     console.error("Erro ao chamar Gemini API:", error);
     res.status(500).json({ erro: "Erro ao se comunicar com a Gemini API." });
