@@ -35,8 +35,7 @@ async function handleSendMessage() {
     messageInput.disabled = true;
 
     try {
-        // Ajuste a URL abaixo para seu backend (Vercel ou Render)
-        const response = await fetch("https://chatbot-de-autocuidado-back.onrender.com/chat", {
+        const response = await fetch("https://chatbot-de-autocuidado.onrender.com/chat", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
