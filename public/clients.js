@@ -1,64 +1,69 @@
-const backendURL = "https://chatbot-de-autocuidado.onrender.com/chat";
-
 const chatOutput = document.getElementById('chat-output');
 const messageInput = document.getElementById('message-input');
 const sendButton = document.getElementById('send-btn');
 const loadingIndicator = document.getElementById('loading-indicator');
 
+let chatHistory = [];
+
+const initialBotMessage = chatOutput.querySelector('.bot-message');
+if (initialBotMessage) {
+    chatHistory.push({ role: "model", parts: [{ text: initialBotMessage.textContent.trim() }] });
+}
+
 function addMessageToChat(sender, text, cssClass = '') {
-  const messageDiv = document.createElement('div');
-  messageDiv.classList.add('message', `${sender}-message`);
-  if (cssClass) {
-    messageDiv.classList.add(cssClass);
-  }
-  messageDiv.textContent = text;
-  chatOutput.appendChild(messageDiv);
-  chatOutput.scrollTop = chatOutput.scrollHeight;
+    const messageDiv = document.createElement('div');
+    messageDiv.classList.add('message', `${sender}-message`);
+    if (cssClass) messageDiv.classList.add(cssClass);
+    messageDiv.textContent = text;
+    chatOutput.appendChild(messageDiv);
+    chatOutput.scrollTop = chatOutput.scrollHeight;
 }
 
 async function handleSendMessage() {
-  const userMessage = messageInput.value.trim();
-  if (!userMessage) return;
+    const userMessage = messageInput.value.trim();
+    if (!userMessage) return;
 
-  addMessageToChat('user', userMessage);
+    addMessageToChat('user', userMessage);
+    const historyToSend = [...chatHistory];
 
-  messageInput.value = '';
-  loadingIndicator.style.display = 'block';
-  sendButton.disabled = true;
-  messageInput.disabled = true;
+    messageInput.value = '';
+    loadingIndicator.style.display = 'block';
+    sendButton.disabled = true;
+    messageInput.disabled = true;
 
-  try {
-    const response = await fetch(backendURL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mensagem: userMessage })
-    });
+    try {
+        const response = await fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                mensagem: userMessage,
+                historico: historyToSend
+            })
+        });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`O servidor respondeu com um erro: ${response.status}. Resposta: ${errorText}`);
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`O servidor respondeu com erro ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
+        chatHistory = data.historico;
+        addMessageToChat('bot', data.resposta);
+    } catch (error) {
+        console.error("Erro ao conversar com o bot:", error);
+        addMessageToChat('system', `⚠️ Erro: ${error.message}`, 'error-message');
+    } finally {
+        loadingIndicator.style.display = 'none';
+        sendButton.disabled = false;
+        messageInput.disabled = false;
+        messageInput.focus();
     }
-
-    const data = await response.json();
-    addMessageToChat('bot', data.resposta);
-
-  } catch (error) {
-    addMessageToChat('system', `⚠️ Erro: ${error.message}`, 'error-message');
-  } finally {
-    loadingIndicator.style.display = 'none';
-    sendButton.disabled = false;
-    messageInput.disabled = false;
-    messageInput.focus();
-  }
 }
 
-// Evento do botão enviar
 sendButton.addEventListener('click', handleSendMessage);
-
-// Enviar mensagem com tecla Enter
 messageInput.addEventListener('keypress', (event) => {
-  if (event.key === 'Enter') {
-    event.preventDefault();
-    handleSendMessage();
-  }
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        handleSendMessage();
+    }
 });
