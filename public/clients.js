@@ -1,4 +1,3 @@
-// clients.js
 const chatOutput = document.getElementById('chat-output');
 const messageInput = document.getElementById('message-input');
 const sendButton = document.getElementById('send-btn');
@@ -6,7 +5,7 @@ const loadingIndicator = document.getElementById('loading-indicator');
 
 let chatHistory = [];
 
-// Captura a mensagem inicial do bot no HTML para adicionar ao histórico
+// Pega a mensagem inicial do bot, se existir, e adiciona ao histórico
 const initialBotMessage = chatOutput.querySelector('.bot-message');
 if (initialBotMessage) {
     chatHistory.push({ role: "model", parts: [{ text: initialBotMessage.textContent.trim() }] });
@@ -28,7 +27,6 @@ async function handleSendMessage() {
     if (!userMessage) return;
 
     addMessageToChat('user', userMessage);
-
     const historyToSend = [...chatHistory];
 
     messageInput.value = '';
@@ -37,8 +35,8 @@ async function handleSendMessage() {
     messageInput.disabled = true;
 
     try {
-        // Usa uma URL relativa '/chat'. Funciona localmente e no Render.
-        const response = await fetch('/chat', {
+        // Atenção aqui: URL da API ajustada para Vercel
+        const response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -47,14 +45,13 @@ async function handleSendMessage() {
             })
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
-            throw new Error(data.erro || `Erro HTTP: ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`O servidor respondeu com um erro: ${response.status}. Resposta: ${errorText}`);
         }
 
-        // O servidor retorna o histórico completo e atualizado.
-        chatHistory = data.historico;
+        const data = await response.json();
+        chatHistory = data.historico; // atualiza o histórico com o que o servidor retornou
         addMessageToChat('bot', data.resposta);
 
     } catch (error) {
@@ -71,7 +68,7 @@ async function handleSendMessage() {
 sendButton.addEventListener('click', handleSendMessage);
 messageInput.addEventListener('keypress', (event) => {
     if (event.key === 'Enter') {
-        event.preventDefault(); // Evita que a página recarregue
+        event.preventDefault();
         handleSendMessage();
     }
 });
