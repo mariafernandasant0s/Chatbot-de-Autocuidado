@@ -1,7 +1,6 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import fetch from "node-fetch"; // Se for Node 18+, fetch já é nativo
 
 dotenv.config();
 
@@ -36,7 +35,6 @@ app.post("/chat", async (req, res) => {
           }
         ]
       },
-      // opções extras aqui, como temperatura, maxTokens etc
       temperature: 0.7,
       maxOutputTokens: 512,
     };
@@ -56,7 +54,6 @@ app.post("/chat", async (req, res) => {
     }
 
     const data = await response.json();
-    // A resposta de texto geralmente está aqui:
     const resposta = data?.candidates?.[0]?.message?.content || "Sem resposta";
 
     res.json({ resposta });
