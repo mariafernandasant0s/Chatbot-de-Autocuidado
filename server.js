@@ -1,84 +1,78 @@
-// server.js
-import express from 'express';
-import cors from 'cors';
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
-import dotenv from 'dotenv';
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import { Configuration, OpenAIApi } from "openai";
 
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
-// --- Configurações da API ---
-const API_KEY = process.env.GEMINI_API_KEY;
-
-if (!API_KEY) {
-    console.error("ERRO FATAL: Variável de ambiente GEMINI_API_KEY não definida.");
-    process.exit(1);
-}
-
-const genAI = new GoogleGenerativeAI(API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-
-const generationConfig = {
-    temperature: 0.7,
-    topK: 1,
-    topP: 1,
-    maxOutputTokens: 2048,
-};
-
-const safetySettings = [
-    { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-    { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-    { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-    { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-];
-
-// --- Middlewares ---
 app.use(cors());
-app.use(express.json()); // Middleware para interpretar JSON
-app.use(express.static('public')); // Serve os arquivos da pasta 'public'
+app.use(express.json());
 
-// --- Endpoint do Chat ---
-app.post('/chat', async (req, res) => {
-    const { mensagem, historico } = req.body;
+// Configuração da OpenAI com chave da .env
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+const openai = new OpenAIApi(configuration);
 
-    if (!mensagem) {
-        return res.status(400).json({ erro: "A mensagem é obrigatória." });
-    }
-
-    try {
-        const chat = model.startChat({
-            history: historico || [],
-            generationConfig,
-            safetySettings,
-        });
-
-        const result = await chat.sendMessage(mensagem);
-        const response = result.response;
-
-        if (!response || response.promptFeedback?.blockReason) {
-            const blockReason = response?.promptFeedback?.blockReason || 'desconhecido';
-            return res.status(500).json({ erro: `A resposta foi bloqueada por segurança: ${blockReason}` });
-        }
-
-        const textoResposta = response.text();
-
-        const novoHistorico = [
-            ...(historico || []),
-            { role: "user", parts: [{ text: mensagem }] },
-            { role: "model", parts: [{ text: textoResposta }] }
-        ];
-
-        res.json({ resposta: textoResposta, historico: novoHistorico });
-
-    } catch (error) {
-        console.error("Erro na API Gemini:", error);
-        res.status(500).json({ erro: "Ocorreu um erro ao se comunicar com a IA." });
-    }
+app.get("/", (req, res) => {
+  res.send("Servidor funcionando!");
 });
 
-// --- Inicialização do Servidor ---
-app.listen(port, () => {
-    console.log(`Servidor rodando na porta ${port}`);
+app.post("/chat", async (req, res) => {
+  const { mensagem, historico } = req.body;
+
+  if (!mensagem) {
+    return res.status(400).json({ erro: "Mensagem não enviada" });
+  }
+
+  try {
+    // Monta as mensagens para enviar à OpenAI
+    // Adaptar conforme seu formato de histórico, aqui um exemplo genérico
+    const messages = [];
+
+    if (Array.isArray(historico)) {
+      for (const entry of historico) {
+        if (entry.role === "user") {
+          messages.push({ role: "user", content: entry.parts[0].text });
+        } else if (entry.role === "model") {
+          messages.push({ role: "assistant", content: entry.parts[0].text });
+        }
+      }
+    }
+
+    // Adiciona a mensagem atual do usuário
+    messages.push({ role: "user", content: mensagem });
+
+    // Chama a OpenAI Chat Completion
+    const completion = await openai.createChatCompletion({
+      model: "gpt-4o-mini",
+      messages: messages,
+      max_tokens: 200,
+      temperature: 0.7,
+    });
+
+    const resposta = completion.data.choices[0].message.content.trim();
+
+    // Atualiza o histórico com a nova mensagem do usuário e a resposta do bot
+    const novoHistorico = [...(historico || [])];
+    novoHistorico.push({ role: "user", parts: [{ text: mensagem }] });
+    novoHistorico.push({ role: "model", parts: [{ text: resposta }] });
+
+    return res.json({
+      resposta,
+      historico: novoHistorico,
+    });
+  } catch (error) {
+    console.error("Erro na API OpenAI:", error.response?.data || error.message);
+    return res.status(500).json({
+      erro: "Ocorreu um erro ao se comunicar com a IA.",
+    });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
