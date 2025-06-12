@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { Configuration, OpenAIApi } from "openai";
+import fetch from "node-fetch"; // Se for Node 18+, fetch já é nativo
 
 dotenv.config();
 
@@ -11,68 +11,61 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Configuração da OpenAI com chave da .env
-const configuration = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-const openai = new OpenAIApi(configuration);
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta2/models/chat-bison-001:generateMessage";
 
-app.get("/", (req, res) => {
-  res.send("Servidor funcionando!");
-});
+if (!GEMINI_API_KEY) {
+  console.error("❌ GEMINI_API_KEY não está definida no .env");
+  process.exit(1);
+}
 
 app.post("/chat", async (req, res) => {
-  const { mensagem, historico } = req.body;
+  const { mensagem } = req.body;
 
   if (!mensagem) {
     return res.status(400).json({ erro: "Mensagem não enviada" });
   }
 
   try {
-    // Monta as mensagens para enviar à OpenAI
-    // Adaptar conforme seu formato de histórico, aqui um exemplo genérico
-    const messages = [];
+    const body = {
+      prompt: {
+        messages: [
+          {
+            content: mensagem,
+            role: "user"
+          }
+        ]
+      },
+      // opções extras aqui, como temperatura, maxTokens etc
+      temperature: 0.7,
+      maxOutputTokens: 512,
+    };
 
-    if (Array.isArray(historico)) {
-      for (const entry of historico) {
-        if (entry.role === "user") {
-          messages.push({ role: "user", content: entry.parts[0].text });
-        } else if (entry.role === "model") {
-          messages.push({ role: "assistant", content: entry.parts[0].text });
-        }
-      }
+    const response = await fetch(`${GEMINI_ENDPOINT}?key=${GEMINI_API_KEY}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Erro Gemini API:", errorData);
+      return res.status(500).json({ erro: "Erro na API Gemini", detalhes: errorData });
     }
 
-    // Adiciona a mensagem atual do usuário
-    messages.push({ role: "user", content: mensagem });
+    const data = await response.json();
+    // A resposta de texto geralmente está aqui:
+    const resposta = data?.candidates?.[0]?.message?.content || "Sem resposta";
 
-    // Chama a OpenAI Chat Completion
-    const completion = await openai.createChatCompletion({
-      model: "gpt-4o-mini",
-      messages: messages,
-      max_tokens: 200,
-      temperature: 0.7,
-    });
-
-    const resposta = completion.data.choices[0].message.content.trim();
-
-    // Atualiza o histórico com a nova mensagem do usuário e a resposta do bot
-    const novoHistorico = [...(historico || [])];
-    novoHistorico.push({ role: "user", parts: [{ text: mensagem }] });
-    novoHistorico.push({ role: "model", parts: [{ text: resposta }] });
-
-    return res.json({
-      resposta,
-      historico: novoHistorico,
-    });
+    res.json({ resposta });
   } catch (error) {
-    console.error("Erro na API OpenAI:", error.response?.data || error.message);
-    return res.status(500).json({
-      erro: "Ocorreu um erro ao se comunicar com a IA.",
-    });
+    console.error("Erro ao chamar Gemini API:", error);
+    res.status(500).json({ erro: "Erro ao se comunicar com a Gemini API." });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`Servidor rodando na porta ${PORT}`);
 });
