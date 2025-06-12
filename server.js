@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import fetch from "node-fetch"; // Para Node <18; se for 18+, pode remover
+import fetch from "node-fetch";
 
 dotenv.config();
 
@@ -57,7 +57,7 @@ app.post("/chat", async (req, res) => {
     const data = await response.json();
     const resposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Sem resposta.";
 
-    res.json({ resposta, historico: [] }); // historico vazio por enquanto
+    res.json({ resposta, historico: [] }); // opcional: adaptar se usar histórico
   } catch (error) {
     console.error("Erro ao chamar Gemini API:", error);
     res.status(500).json({ erro: "Erro ao se comunicar com a Gemini API." });
@@ -65,5 +65,5 @@ app.post("/chat", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`✅ Servidor rodando na porta ${PORT}`);
 });
