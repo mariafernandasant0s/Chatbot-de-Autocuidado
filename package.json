@@ -1,12 +1,7 @@
 {
-  "contents": [
-    {
-      "parts": [{ "text": "sua mensagem aqui" }],
-      "role": "user"
-    }
-  ],
-  "generationConfig": {
-    "temperature": 0.7,
-    "maxOutputTokens": 512
-  }
+  "mensagem": "Olá, como você está?",
+  "historico": [
+    { "role": "user", "parts": [{ "text": "Oi, quem é você?" }] },
+    { "role": "model", "parts": [{ "text": "Eu sou um assistente virtual." }] }
+  ]
 }
