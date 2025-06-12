@@ -1,4 +1,3 @@
-// clients.js (VERSÃO FINAL E CORRETA)
 const chatOutput = document.getElementById('chat-output');
 const messageInput = document.getElementById('message-input');
 const sendButton = document.getElementById('send-btn');
@@ -6,6 +5,7 @@ const loadingIndicator = document.getElementById('loading-indicator');
 
 let chatHistory = [];
 
+// Pega a mensagem inicial do bot, se existir, e adiciona ao histórico
 const initialBotMessage = chatOutput.querySelector('.bot-message');
 if (initialBotMessage) {
     chatHistory.push({ role: "model", parts: [{ text: initialBotMessage.textContent.trim() }] });
@@ -35,10 +35,8 @@ async function handleSendMessage() {
     messageInput.disabled = true;
 
     try {
-        // --- CORREÇÃO CRÍTICA AQUI ---
-        // Usamos uma URL relativa '/chat'. Isso força o frontend a falar
-        // com o backend que está no mesmo servidor (o seu do Render).
-        const response = await fetch('/chat', {
+        // Atenção aqui: URL da API ajustada para Vercel
+        const response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -48,13 +46,12 @@ async function handleSendMessage() {
         });
 
         if (!response.ok) {
-            // Se a resposta não for JSON, lê como texto para depurar.
             const errorText = await response.text();
             throw new Error(`O servidor respondeu com um erro: ${response.status}. Resposta: ${errorText}`);
         }
 
         const data = await response.json();
-        chatHistory = data.historico;
+        chatHistory = data.historico; // atualiza o histórico com o que o servidor retornou
         addMessageToChat('bot', data.resposta);
 
     } catch (error) {
