@@ -3,14 +3,12 @@ const messageInput = document.getElementById('message-input');
 const sendButton = document.getElementById('send-btn');
 const loadingIndicator = document.getElementById('loading-indicator');
 
-let chatHistory = [];
+let chatHistory = []; // O histórico agora começa vazio, que é o correto.
 
-const initialBotMessage = chatOutput.querySelector('.bot-message');
-if (initialBotMessage) {
-    chatHistory.push({ role: "model", parts: [{ text: initialBotMessage.textContent.trim() }] });
-}
+// O bloco que adicionava a mensagem inicial foi removido.
 
 function addMessageToChat(sender, text, cssClass = '') {
+    // ... o resto do código continua igual
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message', `${sender}-message`);
     if (cssClass) messageDiv.classList.add(cssClass);
