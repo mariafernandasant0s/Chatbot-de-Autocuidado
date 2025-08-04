@@ -1,111 +1,104 @@
 // server.js
 import express from 'express';
 import cors from 'cors';
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { MongoClient } from 'mongodb'; // Pacote para conectar ao MongoDB
 import dotenv from 'dotenv';
 
-dotenv.config(); // Carrega as variáveis do arquivo .env
+dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Pega a chave da API do Gemini do arquivo .env
-const API_KEY = process.env.GEMINI_API_KEY;
+// =================================================================
+// SEÇÃO DE CONEXÃO COM O MONGODB (DA ATIVIDADE B2.P1.A7)
+// =================================================================
+let db; // Variável para guardar a conexão com o banco
 
-// Valida se a chave da API está definida
-if (!API_KEY) {
-  console.error("ERRO FATAL: Variável GEMINI_API_KEY não definida.");
-  console.log("Adicione no arquivo .env na raiz do projeto:");
-  console.log("GEMINI_API_KEY=AIzaSyCWoV1jTNMBhTy0ddBo3CLHB6S_gZVOeOA");
-  process.exit(1);
+// Função para conectar ao banco de dados de logs
+async function connectToDatabase() {
+    // Pega a string de conexão do arquivo .env ou das variáveis do Render
+    const mongoUri = process.env.MONGO_URI_LOGS; 
+    if (!mongoUri) {
+        console.error("ERRO: Variável MONGO_URI_LOGS não encontrada!");
+        return;
+    }
+    const client = new MongoClient(mongoUri);
+    try {
+        await client.connect();
+        // O nome do banco de dados (IIW2023A_Logs) é definido na própria string de conexão
+        const dbName = mongoUri.substring(mongoUri.lastIndexOf("/") + 1, mongoUri.indexOf("?"));
+        db = client.db(dbName);
+        console.log(`Conectado ao banco de dados de logs: ${dbName}`);
+    } catch (err) {
+        console.error("Falha ao conectar ao MongoDB:", err);
+    }
 }
 
-const genAI = new GoogleGenerativeAI(API_KEY);
+connectToDatabase(); // Conecta ao banco assim que o servidor inicia
+// =================================================================
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
-const generationConfig = {
-  temperature: 0.7,
-  topK: 1,
-  topP: 1,
-  maxOutputTokens: 2048,
-};
-
-const safetySettings = [
-  { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-  { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-  { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-  { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-];
-
-// Middlewares
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// Endpoint POST /chat
+// Endpoint principal do Chat (que você já tinha)
 app.post('/chat', async (req, res) => {
-  console.log("Requisição /chat recebida:", req.body);
+    try {
+        const { mensagem, historico } = req.body;
+        const chat = model.startChat({ history: historico });
+        const result = await chat.sendMessage(mensagem);
+        const response = result.response;
+        const textoResposta = response.text();
 
-  const mensagemUsuario = req.body.mensagem;
-  const historicoRecebido = req.body.historico || [];
-
-  if (!mensagemUsuario || typeof mensagemUsuario !== 'string' || mensagemUsuario.trim() === '') {
-    console.log("Requisição inválida: mensagem ausente ou vazia.");
-    return res.status(400).json({ erro: "Mensagem inválida ou ausente." });
-  }
-
-  if (!Array.isArray(historicoRecebido)) {
-    console.log("Requisição inválida: histórico não é um array.");
-    return res.status(400).json({ erro: "Formato de histórico inválido." });
-  }
-
-  try {
-    const instruction = {
-      role: "user",
-      parts: [{ text: "Instrução: Você é um assistente virtual de autocuidado. Responda sempre em português do Brasil de forma gentil e amigável." }],
-    };
-    
-    const chat = model.startChat({
-      history: [instruction, ...historicoRecebido],
-      generationConfig,
-      safetySettings,
-    });
-
-    const result = await chat.sendMessage(mensagemUsuario);
-    const response = result.response;
-
-    if (!response || response.promptFeedback?.blockReason) {
-      const blockReason = response?.promptFeedback?.blockReason || 'desconhecido';
-      console.warn(`Resposta bloqueada pela API Gemini. Motivo: ${blockReason}`);
-      return res.status(400).json({ erro: `Mensagem bloqueada por questões de segurança (${blockReason}). Tente reformular.` });
+        const novoHistorico = [
+            ...historico,
+            { role: "user", parts: [{ text: mensagem }] },
+            { role: "model", parts: [{ text: textoResposta }] },
+        ];
+        res.json({ resposta: textoResposta, historico: novoHistorico });
+    } catch (error) {
+        console.error("Erro no endpoint /chat:", error);
+        res.status(500).json({ erro: "Erro interno no servidor." });
     }
-
-    const textoResposta = response.text();
-
-    const novoHistorico = [
-      ...historicoRecebido,
-      { role: "user", parts: [{ text: mensagemUsuario }] },
-      { role: "model", parts: [{ text: textoResposta }] },
-    ];
-
-    console.log("Enviando resposta e histórico atualizado.");
-    res.json({ resposta: textoResposta, historico: novoHistorico });
-
-  } catch (error) {
-    console.error("Erro ao interagir com a API Gemini:", error);
-    const apiErrorMessage = error?.response?.data?.error?.message || error?.message;
-    res.status(500).json({
-      erro: `Erro interno no servidor ao processar sua solicitação. Tente novamente mais tarde. (Detalhe: ${apiErrorMessage || 'Erro desconhecido'})`
-    });
-  }
 });
 
-// Rota para evitar erro de favicon
-app.get('/favicon.ico', (req, res) => res.status(204).end());
+// =================================================================
+// NOVO ENDPOINT DE LOG (DA ATIVIDADE B2.P1.A7)
+// =================================================================
+app.post('/api/log-acesso', async (req, res) => {
+    if (!db) {
+        return res.status(500).json({ error: "Servidor não conectado ao banco de dados." });
+    }
+    try {
+        const { ip, nome_bot } = req.body;
+        const agora = new Date();
 
-// Inicializa o servidor
+        // Estrutura do log definida na Atividade B2.P1.A7
+        const logEntry = {
+            col_data: agora.toISOString().split('T')[0],
+            col_hora: agora.toTimeString().split(' ')[0],
+            col_IP: ip,
+            col_nome_bot: nome_bot,
+            col_acao: "acesso_inicial_chatbot"
+        };
+        
+        // Nome da coleção definido na Atividade B2.P1.A7
+        const collection = db.collection("tb_cl_user_log_acess");
+        await collection.insertOne(logEntry);
+        res.status(201).json({ message: "Log registrado com sucesso." });
+
+    } catch (error) {
+        console.error("Erro ao salvar log de acesso:", error);
+        res.status(500).json({ error: "Erro interno ao salvar log de acesso." });
+    }
+});
+// =================================================================
+
+
 app.listen(port, () => {
-  console.log(`Servidor rodando em http://localhost:${port}`);
-  console.log(`Servindo arquivos estáticos da pasta 'public'`);
-  console.log(`API Key do Gemini carregada: ${API_KEY ? 'Sim' : 'NÃO (Verifique o .env!)'}`);
+    console.log(`Servidor rodando na porta ${port}`);
 });
