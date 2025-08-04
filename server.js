@@ -16,12 +16,12 @@ const API_KEY = process.env.GEMINI_API_KEY;
 if (!API_KEY) {
   console.error("ERRO FATAL: Variável GEMINI_API_KEY não definida.");
   console.log("Adicione no arquivo .env na raiz do projeto:");
-  console.log("GEMINI_API_KEY=SUA_CHAVE_API_AQUI");
+  console.log("GEMINI_API_KEY=AIzaSyCWoV1jTNMBhTy0ddBo3CLHB6S_gZVOeOA");
   process.exit(1);
 }
 
 const genAI = new GoogleGenerativeAI(API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
 const generationConfig = {
   temperature: 0.7,
@@ -60,8 +60,13 @@ app.post('/chat', async (req, res) => {
   }
 
   try {
+    const instruction = {
+      role: "user",
+      parts: [{ text: "Instrução: Você é um assistente virtual de autocuidado. Responda sempre em português do Brasil de forma gentil e amigável." }],
+    };
+    
     const chat = model.startChat({
-      history: historicoRecebido,
+      history: [instruction, ...historicoRecebido],
       generationConfig,
       safetySettings,
     });
