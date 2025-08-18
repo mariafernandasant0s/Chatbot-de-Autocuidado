@@ -1,59 +1,47 @@
-// server.js
+// server.js (VERSÃO COM PERSONALIDADE ACOLHEDORA)
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { MongoClient } from 'mongodb'; // Pacote para conectar ao MongoDB
 import dotenv from 'dotenv';
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const port = process.env.PORT || 3000;
 
-// =================================================================
-// SEÇÃO DE CONEXÃO COM O MONGODB (DA ATIVIDADE B2.P1.A7)
-// =================================================================
-let db; // Variável para guardar a conexão com o banco
-
-// Função para conectar ao banco de dados de logs
-async function connectToDatabase() {
-    // Pega a string de conexão do arquivo .env ou das variáveis do Render
-    const mongoUri = process.env.MONGO_URI_LOGS; 
-    if (!mongoUri) {
-        console.error("ERRO: Variável MONGO_URI_LOGS não encontrada!");
-        return;
-    }
-    const client = new MongoClient(mongoUri);
-    try {
-        await client.connect();
-        // O nome do banco de dados (IIW2023A_Logs) é definido na própria string de conexão
-        const dbName = mongoUri.substring(mongoUri.lastIndexOf("/") + 1, mongoUri.indexOf("?"));
-        db = client.db(dbName);
-        console.log(`Conectado ao banco de dados de logs: ${dbName}`);
-    } catch (err) {
-        console.error("Falha ao conectar ao MongoDB:", err);
-    }
+if (!process.env.GEMINI_API_KEY) {
+    console.error("ERRO: A variável GEMINI_API_KEY não foi encontrada no arquivo .env!");
+    process.exit(1);
 }
-
-connectToDatabase(); // Conecta ao banco assim que o servidor inicia
-// =================================================================
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Endpoint principal do Chat (que você já tinha)
+// --- MUDANÇA 1: PERSONALIDADE NAS CONVERSAS ---
 app.post('/chat', async (req, res) => {
     try {
         const { mensagem, historico } = req.body;
+
+        // A "Instrução Secreta" que define a personalidade do bot
+        const persona = "Você é um Chatbot de Autocuidado. Sua personalidade é extremamente querida, acolhedora, gentil e positiva. Você é como uma amiga que oferece conforto e apoio. Suas respostas são sempre carinhosas e encorajadoras. Responda à seguinte mensagem do usuário nesse tom:\n";
+        
+        const promptCompleto = persona + mensagem;
+
         const chat = model.startChat({ history: historico });
-        const result = await chat.sendMessage(mensagem);
-        const response = result.response;
+        const result = await chat.sendMessage(promptCompleto);
+        const response = await result.response;
         const textoResposta = response.text();
 
+        // O histórico continua o mesmo, sem a instrução da persona
         const novoHistorico = [
             ...historico,
             { role: "user", parts: [{ text: mensagem }] },
@@ -66,39 +54,28 @@ app.post('/chat', async (req, res) => {
     }
 });
 
-// =================================================================
-// NOVO ENDPOINT DE LOG (DA ATIVIDADE B2.P1.A7)
-// =================================================================
-app.post('/api/log-acesso', async (req, res) => {
-    if (!db) {
-        return res.status(500).json({ error: "Servidor não conectado ao banco de dados." });
-    }
+// --- MUDANÇA 2: GERANDO DICAS ORIGINAIS E ACOLHEDORAS ---
+app.get('/api/dica-do-dia', async (req, res) => {
     try {
-        const { ip, nome_bot } = req.body;
-        const agora = new Date();
-
-        // Estrutura do log definida na Atividade B2.P1.A7
-        const logEntry = {
-            col_data: agora.toISOString().split('T')[0],
-            col_hora: agora.toTimeString().split(' ')[0],
-            col_IP: ip,
-            col_nome_bot: nome_bot,
-            col_acao: "acesso_inicial_chatbot"
-        };
+        // Não buscamos mais em outra API. Pedimos para a Gemini CRIAR a dica.
+        const prompt = "Aja como uma amiga querida e acolhedora. Crie uma dica de autocuidado original, curta, positiva e gentil, em português do Brasil. A dica deve ser algo prático e fácil de fazer no dia a dia para se sentir melhor.";
         
-        // Nome da coleção definido na Atividade B2.P1.A7
-        const collection = db.collection("tb_cl_user_log_acess");
-        await collection.insertOne(logEntry);
-        res.status(201).json({ message: "Log registrado com sucesso." });
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const dicaGerada = response.text();
 
+        res.status(200).json({ dica: dicaGerada });
     } catch (error) {
-        console.error("Erro ao salvar log de acesso:", error);
-        res.status(500).json({ error: "Erro interno ao salvar log de acesso." });
+        console.error("Erro ao gerar a dica:", error);
+        res.status(500).json({ error: "Desculpe, não consegui pensar em uma dica agora. Tente novamente." });
     }
 });
-// =================================================================
 
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 app.listen(port, () => {
-    console.log(`Servidor rodando na porta ${port}`);
+    console.log(`Servidor com personalidade rodando na porta ${port}`);
+    console.log(`Acesse em http://localhost:${port}`);
 });
