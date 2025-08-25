@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Referências a todos os elementos da interface
     const chatOutput = document.getElementById('chat-output');
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-btn');
@@ -10,12 +9,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeToggleButton = document.getElementById('theme-toggle-btn');
     const typingIndicator = document.getElementById('typing-indicator');
     const historyList = document.getElementById('history-list');
+    const suggestionButtons = document.querySelectorAll('.suggestion-btn');
+    const sidebar = document.getElementById('sidebar');
+    const menuButton = document.getElementById('menu-btn');
+    const closeMenuButton = document.getElementById('close-menu-btn');
+    const overlay = document.getElementById('overlay');
 
     let chatHistory = [];
     let conversationHistory = [];
     let currentConversationId = null;
 
-    // --- FUNÇÕES DE GERENCIAMENTO DE HISTÓRICO ---
     const loadConversationHistory = () => {
         const saved = localStorage.getItem('chatbot-conversations');
         if (saved) {
@@ -28,13 +31,11 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('chatbot-conversations', JSON.stringify(conversationHistory));
     };
 
-    const generateConversationId = () => {
-        return 'conv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    };
+    const generateConversationId = () => 'conv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
     const createNewConversation = () => {
         currentConversationId = generateConversationId();
-        const firstMessage = chatHistory.length > 0 ? chatHistory[0].parts[0].text : 'Nova conversa';
+        const firstMessage = chatHistory[0]?.parts[0]?.text || 'Nova conversa';
         const conversation = {
             id: currentConversationId,
             title: firstMessage.substring(0, 30) + (firstMessage.length > 30 ? '...' : ''),
@@ -48,7 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updateCurrentConversation = () => {
         if (!currentConversationId) return;
-        
         const conversationIndex = conversationHistory.findIndex(conv => conv.id === currentConversationId);
         if (conversationIndex !== -1) {
             conversationHistory[conversationIndex].messages = [...chatHistory];
@@ -60,24 +60,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadConversation = (conversationId) => {
         const conversation = conversationHistory.find(conv => conv.id === conversationId);
         if (!conversation) return;
-
         currentConversationId = conversationId;
         chatHistory = [...conversation.messages];
-        
-        // Limpar o chat atual
         chatOutput.innerHTML = '';
-        
-        // Recriar as mensagens na interface
         if (chatHistory.length > 0) {
             showChatInterface();
             chatHistory.forEach(message => {
                 const sender = message.role === 'user' ? 'user' : 'bot';
-                addMessageToChat(sender, message.parts[0].text, false); // false para não salvar novamente
+                addMessageToChat(sender, message.parts[0].text, false);
             });
         } else {
-            chatOutput.classList.add('hidden');
-            welcomeScreen.classList.remove('hidden');
+            showWelcomeScreen();
         }
+        updateHistoryList();
     };
 
     const updateHistoryList = () => {
@@ -88,25 +83,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (conversation.id === currentConversationId) {
                 listItem.classList.add('active');
             }
-            
             const date = new Date(conversation.timestamp).toLocaleDateString('pt-BR');
-            listItem.innerHTML = `
-                <div class="conversation-title">${conversation.title}</div>
-                <div class="conversation-date">${date}</div>
-            `;
-            
+            listItem.innerHTML = `<div class="conversation-title">${conversation.title}</div><div class="conversation-date">${date}</div>`;
             listItem.addEventListener('click', () => {
                 loadConversation(conversation.id);
-                // Atualizar visual da conversa ativa
-                document.querySelectorAll('.history-item').forEach(item => item.classList.remove('active'));
-                listItem.classList.add('active');
+                closeSidebar();
             });
-            
             historyList.appendChild(listItem);
         });
     };
+    
+    const showWelcomeScreen = () => {
+        chatOutput.classList.add('hidden');
+        welcomeScreen.classList.remove('hidden');
+    };
 
-    // --- FUNÇÕES DE INTERFACE ---
     const showChatInterface = () => {
         welcomeScreen.classList.add('hidden');
         chatOutput.classList.remove('hidden');
@@ -119,16 +110,13 @@ document.addEventListener('DOMContentLoaded', () => {
         messageDiv.textContent = text;
         chatOutput.appendChild(messageDiv);
         chatOutput.scrollTop = chatOutput.scrollHeight;
-        
-        // Salvar no histórico se necessário
         if (shouldSave) {
             updateCurrentConversation();
         }
     };
 
     const toggleLoading = (isLoading) => {
-        const buttons = [sendButton, dicaButton, aboutButton, newChatButton];
-        buttons.forEach(button => button.disabled = isLoading);
+        [sendButton, dicaButton, aboutButton, newChatButton, ...suggestionButtons].forEach(button => button.disabled = isLoading);
         messageInput.disabled = isLoading;
         if (isLoading) {
             typingIndicator.classList.remove('hidden');
@@ -143,24 +131,19 @@ document.addEventListener('DOMContentLoaded', () => {
         messageInput.style.height = `${messageInput.scrollHeight}px`;
     };
 
-    // --- FUNÇÕES DE AÇÃO ---
     const handleSendMessage = async () => {
         const userMessage = messageInput.value.trim();
         if (!userMessage) return;
-        
-        // Se não há conversa ativa, criar uma nova
         if (!currentConversationId) {
             chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
             createNewConversation();
         } else {
             chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
         }
-        
         addMessageToChat('user', userMessage);
         messageInput.value = '';
         autoResizeTextarea();
         toggleLoading(true);
-
         try {
             const response = await fetch('/chat', {
                 method: 'POST',
@@ -168,49 +151,45 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ mensagem: userMessage, historico: chatHistory.slice(0, -1) })
             });
             if (!response.ok) throw new Error('Falha na resposta do servidor');
-            
             const data = await response.json();
             chatHistory.push({ role: "model", parts: [{ text: data.resposta }] });
             addMessageToChat('bot', data.resposta);
         } catch (error) {
             console.error("Erro ao conversar:", error);
             addMessageToChat('bot', 'Desculpe, ocorreu um erro na comunicação.');
-            chatHistory.pop(); // Remove a mensagem do usuário do histórico se falhar
+            if(chatHistory.length > 0) chatHistory.pop();
         } finally {
             toggleLoading(false);
         }
     };
 
     const handleDicaDoDia = async () => {
+        addMessageToChat('bot', `💡 Gerando uma nova dica para você...`);
         toggleLoading(true);
         try {
             const response = await fetch('/api/dica-do-dia');
             const data = await response.json();
             if (!response.ok) throw new Error(data.error);
-            addMessageToChat('bot', `💡 ${data.dica}`);
+            chatOutput.lastChild.textContent = `💡 ${data.dica}`;
         } catch (error) {
-            console.error("Erro ao buscar dica:", error);
-            addMessageToChat('bot', 'Ops, não consegui buscar sua dica agora.');
+            chatOutput.lastChild.textContent = 'Ops, não consegui buscar sua dica agora.';
         } finally {
             toggleLoading(false);
         }
     };
-    
+
     const showAboutInfo = () => {
-        const aboutText = "Sou o Chatbot de Autocuidado 💖, seu assistente pessoal para o bem-estar. Fui criado com a tecnologia de IA do Google para te oferecer um espaço seguro para conversar, relaxar e encontrar dicas que tornem seu dia mais leve.";
-        addMessageToChat('bot', aboutText);
+        addMessageToChat('bot', "Sou o Chatbot de Autocuidado 💖, seu assistente pessoal para o bem-estar. Fui criado para te oferecer um espaço seguro para conversar, relaxar e encontrar dicas que tornem seu dia mais leve.");
     };
 
     const startNewChat = () => {
         chatHistory = [];
         currentConversationId = null;
         chatOutput.innerHTML = '';
-        chatOutput.classList.add('hidden');
-        welcomeScreen.classList.remove('hidden');
+        showWelcomeScreen();
         messageInput.focus();
-        
-        // Remover seleção ativa do histórico
-        document.querySelectorAll('.history-item').forEach(item => item.classList.remove('active'));
+        updateHistoryList();
+        closeSidebar();
     };
 
     const toggleTheme = () => {
@@ -221,24 +200,44 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
     };
 
+    const handleSuggestionClick = (event) => {
+        messageInput.value = event.target.textContent;
+        handleSendMessage();
+    };
+
+    const openSidebar = () => {
+        sidebar.classList.add('visible');
+        overlay.classList.remove('hidden');
+    };
+
+    const closeSidebar = () => {
+        sidebar.classList.remove('visible');
+        overlay.classList.add('hidden');
+    };
+
     // --- INICIALIZAÇÃO E OUVINTES DE EVENTOS ---
-    // Carregar histórico de conversas ao inicializar
     loadConversationHistory();
-    
     if (localStorage.getItem('theme') === 'dark') {
-        toggleTheme();
+        document.body.classList.add('theme-dark');
+        themeToggleButton.textContent = '☀️';
+    } else {
+        themeToggleButton.textContent = '🌙';
     }
-    
+
     sendButton.addEventListener('click', handleSendMessage);
     newChatButton.addEventListener('click', startNewChat);
     dicaButton.addEventListener('click', handleDicaDoDia);
     aboutButton.addEventListener('click', showAboutInfo);
     themeToggleButton.addEventListener('click', toggleTheme);
     messageInput.addEventListener('input', autoResizeTextarea);
-    messageInput.addEventListener('keypress', (event) => {
-        if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
             handleSendMessage();
         }
     });
+    suggestionButtons.forEach(button => button.addEventListener('click', handleSuggestionClick));
+    menuButton.addEventListener('click', openSidebar);
+    closeMenuButton.addEventListener('click', closeSidebar);
+    overlay.addEventListener('click', closeSidebar);
 });
