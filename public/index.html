@@ -13,14 +13,17 @@
 <body class="theme-light">
 
     <div id="sidebar">
-        <h2>Histórico</h2>
+        <div class="sidebar-header">
+            <h2>Histórico</h2>
+            <button id="close-menu-btn" title="Fechar Histórico">&times;</button>
+        </div>
         <ul id="history-list">
-            <!-- O histórico das conversas aparecerá aqui no futuro -->
         </ul>
     </div>
 
     <main id="chat-area">
         <header>
+            <button id="menu-btn" title="Abrir Histórico">☰</button>
             <div class="header-title">
                 <h1>Chatbot de Autocuidado</h1>
             </div>
@@ -37,10 +40,14 @@
                 <div class="welcome-icon">💖</div>
                 <h2>Bem-vindo ao Chatbot de Autocuidado</h2>
                 <p>Estou aqui para conversar sobre bem-estar, oferecer dicas para relaxar e ajudar nas suas rotinas de autocuidado!</p>
+                <div id="suggestion-buttons">
+                    <button class="suggestion-btn">Como posso relaxar agora?</button>
+                    <button class="suggestion-btn">Me dê uma dica de autocuidado</button>
+                    <button class="suggestion-btn">Qual a importância de uma boa noite de sono?</button>
+                </div>
             </div>
             <div id="chat-output" class="hidden"></div>
             
-            <!-- INDICADOR DE "DIGITANDO..." QUE VAMOS USAR -->
             <div id="typing-indicator" class="hidden">
                 <div class="dot"></div>
                 <div class="dot"></div>
@@ -55,7 +62,7 @@
             </button>
         </div>
     </main>
-
+    <div id="overlay" class="hidden"></div>
     <script src="clients.js"></script>
 </body>
 </html>
