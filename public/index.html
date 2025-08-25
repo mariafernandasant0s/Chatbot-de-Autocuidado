@@ -19,6 +19,10 @@
         </div>
         <ul id="history-list">
         </ul>
+        <div class="sidebar-actions">
+            <button id="dica-btn" title="Dica do Dia">💡 Dica</button>
+            <button id="about-btn" title="Sobre o Bot">ℹ️ Sobre</button>
+        </div>
     </div>
 
     <main id="chat-area">
@@ -28,9 +32,7 @@
                 <h1>Chatbot de Autocuidado</h1>
             </div>
             <div class="header-actions">
-                <button id="dica-btn" title="Dica do Dia">💡 Dica</button>
-                <button id="about-btn" title="Sobre o Bot">ℹ️ Sobre</button>
-                <button id="new-chat-btn">➕ Nova Conversa</button>
+                <button id="new-chat-btn">➕<span class="btn-text"> Nova Conversa</span></button>
                 <button id="theme-toggle-btn" title="Alternar tema">🌙</button>
             </div>
         </header>
@@ -58,7 +60,7 @@
         <div id="input-area">
             <textarea id="message-input" placeholder="Digite sua mensagem..." rows="1"></textarea>
             <button id="send-btn" title="Enviar Mensagem">
-                <svg width="24" height="24" viewBox="0 0 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.4 20.4L20.85 12.02L3.4 3.6V10.1L15.4 12.02L3.4 13.95V20.4Z" fill="white"/></svg>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.4 20.4L20.85 12.02L3.4 3.6V10.1L15.4 12.02L3.4 13.95V20.4Z" fill="white"/></svg>
             </button>
         </div>
 
@@ -66,7 +68,6 @@
             <p>Feito por Maria Fernanda</p>
         </footer>
     </main>
-
     <div id="overlay" class="hidden"></div>
     <script src="clients.js"></script>
 </body>
