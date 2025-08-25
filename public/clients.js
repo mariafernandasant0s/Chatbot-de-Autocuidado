@@ -9,8 +9,102 @@ document.addEventListener('DOMContentLoaded', () => {
     const aboutButton = document.getElementById('about-btn');
     const themeToggleButton = document.getElementById('theme-toggle-btn');
     const typingIndicator = document.getElementById('typing-indicator');
+    const historyList = document.getElementById('history-list');
 
     let chatHistory = [];
+    let conversationHistory = [];
+    let currentConversationId = null;
+
+    // --- FUNÇÕES DE GERENCIAMENTO DE HISTÓRICO ---
+    const loadConversationHistory = () => {
+        const saved = localStorage.getItem('chatbot-conversations');
+        if (saved) {
+            conversationHistory = JSON.parse(saved);
+            updateHistoryList();
+        }
+    };
+
+    const saveConversationHistory = () => {
+        localStorage.setItem('chatbot-conversations', JSON.stringify(conversationHistory));
+    };
+
+    const generateConversationId = () => {
+        return 'conv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    };
+
+    const createNewConversation = () => {
+        currentConversationId = generateConversationId();
+        const firstMessage = chatHistory.length > 0 ? chatHistory[0].parts[0].text : 'Nova conversa';
+        const conversation = {
+            id: currentConversationId,
+            title: firstMessage.substring(0, 30) + (firstMessage.length > 30 ? '...' : ''),
+            messages: [...chatHistory],
+            timestamp: new Date().toISOString()
+        };
+        conversationHistory.unshift(conversation);
+        saveConversationHistory();
+        updateHistoryList();
+    };
+
+    const updateCurrentConversation = () => {
+        if (!currentConversationId) return;
+        
+        const conversationIndex = conversationHistory.findIndex(conv => conv.id === currentConversationId);
+        if (conversationIndex !== -1) {
+            conversationHistory[conversationIndex].messages = [...chatHistory];
+            conversationHistory[conversationIndex].timestamp = new Date().toISOString();
+            saveConversationHistory();
+        }
+    };
+
+    const loadConversation = (conversationId) => {
+        const conversation = conversationHistory.find(conv => conv.id === conversationId);
+        if (!conversation) return;
+
+        currentConversationId = conversationId;
+        chatHistory = [...conversation.messages];
+        
+        // Limpar o chat atual
+        chatOutput.innerHTML = '';
+        
+        // Recriar as mensagens na interface
+        if (chatHistory.length > 0) {
+            showChatInterface();
+            chatHistory.forEach(message => {
+                const sender = message.role === 'user' ? 'user' : 'bot';
+                addMessageToChat(sender, message.parts[0].text, false); // false para não salvar novamente
+            });
+        } else {
+            chatOutput.classList.add('hidden');
+            welcomeScreen.classList.remove('hidden');
+        }
+    };
+
+    const updateHistoryList = () => {
+        historyList.innerHTML = '';
+        conversationHistory.forEach(conversation => {
+            const listItem = document.createElement('li');
+            listItem.className = 'history-item';
+            if (conversation.id === currentConversationId) {
+                listItem.classList.add('active');
+            }
+            
+            const date = new Date(conversation.timestamp).toLocaleDateString('pt-BR');
+            listItem.innerHTML = `
+                <div class="conversation-title">${conversation.title}</div>
+                <div class="conversation-date">${date}</div>
+            `;
+            
+            listItem.addEventListener('click', () => {
+                loadConversation(conversation.id);
+                // Atualizar visual da conversa ativa
+                document.querySelectorAll('.history-item').forEach(item => item.classList.remove('active'));
+                listItem.classList.add('active');
+            });
+            
+            historyList.appendChild(listItem);
+        });
+    };
 
     // --- FUNÇÕES DE INTERFACE ---
     const showChatInterface = () => {
@@ -18,13 +112,18 @@ document.addEventListener('DOMContentLoaded', () => {
         chatOutput.classList.remove('hidden');
     };
 
-    const addMessageToChat = (sender, text) => {
+    const addMessageToChat = (sender, text, shouldSave = true) => {
         showChatInterface();
         const messageDiv = document.createElement('div');
         messageDiv.classList.add('message', `${sender}-message`);
         messageDiv.textContent = text;
         chatOutput.appendChild(messageDiv);
         chatOutput.scrollTop = chatOutput.scrollHeight;
+        
+        // Salvar no histórico se necessário
+        if (shouldSave) {
+            updateCurrentConversation();
+        }
     };
 
     const toggleLoading = (isLoading) => {
@@ -49,12 +148,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const userMessage = messageInput.value.trim();
         if (!userMessage) return;
         
+        // Se não há conversa ativa, criar uma nova
+        if (!currentConversationId) {
+            chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
+            createNewConversation();
+        } else {
+            chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
+        }
+        
         addMessageToChat('user', userMessage);
         messageInput.value = '';
         autoResizeTextarea();
         toggleLoading(true);
-
-        chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
 
         try {
             const response = await fetch('/chat', {
@@ -98,10 +203,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const startNewChat = () => {
         chatHistory = [];
+        currentConversationId = null;
         chatOutput.innerHTML = '';
         chatOutput.classList.add('hidden');
         welcomeScreen.classList.remove('hidden');
         messageInput.focus();
+        
+        // Remover seleção ativa do histórico
+        document.querySelectorAll('.history-item').forEach(item => item.classList.remove('active'));
     };
 
     const toggleTheme = () => {
@@ -113,6 +222,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- INICIALIZAÇÃO E OUVINTES DE EVENTOS ---
+    // Carregar histórico de conversas ao inicializar
+    loadConversationHistory();
+    
     if (localStorage.getItem('theme') === 'dark') {
         toggleTheme();
     }
