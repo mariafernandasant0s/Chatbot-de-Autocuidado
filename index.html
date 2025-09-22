@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chatbot de Auto Cuidado</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Poppins:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="chat-container">
+      <h1 id="chat-title">🧖🏽‍♀️ 🫧Chatbot de Autocuidado</h1>
+
+      <div id="chat-output">
+        <div class="message bot-message">Olá! Sou seu assistente de autocuidado. Como posso ajudar você a relaxar hoje? 😊</div>
+      </div>
+      <div id="loading-indicator" style="display: none;">Bot está pensando...🫧</div>
+
+      <div id="input-area">
+        <input type="text" id="message-input" placeholder="Digite sua mensagem..." />
+        <button id="send-btn">Enviar</button>
+      </div>
+    </div>
+
+    <script src="clients.js"></script>
+  </body>
+</html>
