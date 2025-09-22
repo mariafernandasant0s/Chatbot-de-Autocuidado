@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Painel de Controle</title>
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    <div id="login-container">
+        <h1>Acesso Restrito</h1>
+        <p>Por favor, insira a senha de administrador para continuar.</p>
+        <input type="password" id="password-input" placeholder="Senha">
+        <button id="login-btn">Entrar</button>
+    </div>
+
+    <div id="admin-panel" class="hidden">
+        <header>
+            <h1>Painel de Controle do Administrador</h1>
+            <button id="logout-btn">Sair</button>
+        </header>
+
+        <main>
+            <section id="metrics">
+                <h2>Métricas de Uso</h2>
+                <div class="cards-container">
+                    <div class="card">
+                        <h3>Total de Conversas</h3>
+                        <p id="total-conversas">...</p>
+                    </div>
+                    <div class="card">
+                        <h3>Últimas 5 Conversas</h3>
+                        <ul id="ultimas-conversas">
+                            <li>Carregando...</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section id="ai-control">
+                <h2>Controle da IA - Personalidade Global</h2>
+                <p>Esta instrução define o comportamento do bot para TODAS as novas conversas.</p>
+                <textarea id="system-instruction-input" rows="10" placeholder="Carregando instrução atual..."></textarea>
+                <button id="save-instruction-btn">Salvar Nova Instrução</button>
+                <p id="save-status"></p>
+            </section>
+        </main>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>
